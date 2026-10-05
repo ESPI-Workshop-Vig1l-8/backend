@@ -1,0 +1,24 @@
+# Binaries
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+bin/
+dist/
+sentinel-backend
+
+# Local databases
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
+data/
+
+# Environment
+.env
+*.local
+
+# IDE
+.idea/
+.vscode/
