@@ -1,4 +1,4 @@
-# Multi-stage Docker build for VIG1L-8 Core Backend
+# Multi-stage Docker build for the VIG1L-8 backend
 FROM golang:1.26-alpine AS builder
 
 WORKDIR /app
@@ -7,24 +7,24 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 
-# Build statically linked binary
+# Static binary, tests run during the build
 COPY . .
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-w -s" -o server main.go
+RUN go vet ./... && go test ./... && \
+    CGO_ENABLED=0 GOOS=linux go build -trimpath -ldflags="-w -s" -o server .
 
-# Minimalist production container
+# Minimal runtime image, unprivileged user
 FROM alpine:3.19
+RUN apk --no-cache add ca-certificates tzdata && \
+    adduser -D -H -u 10001 sentinel
 WORKDIR /app
-
-RUN apk --no-cache add ca-certificates tzdata
-
 COPY --from=builder /app/server .
+USER sentinel
 
-# Expose HTTP REST & WebSocket port
+# REST API + WebSocket (reached through the dashboard's reverse proxy)
 EXPOSE 5000
-
 ENV PORT=5000
-ENV SQLITE_PATH=/data/sentinel.db
-ENV MQTT_BROKER=tcp://mosquitto:1883
-ENV COUCHDB_URL=http://couchdb:5984
+
+HEALTHCHECK --interval=15s --timeout=3s --start-period=20s \
+  CMD wget -q -O /dev/null http://127.0.0.1:5000/api/v1/health || exit 1
 
 CMD ["./server"]
