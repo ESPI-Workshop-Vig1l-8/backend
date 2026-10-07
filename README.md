@@ -121,7 +121,7 @@ Live state of every node seen since the backend started, sorted by id.
     "online": true,
     "stale": false,
     "fw": "0.2.0",
-    "ip": "192.168.10.20",
+    "ip": "192.168.10.5",
     "last_seen": 1791290282100,
     "motion": false,
     "telemetry": { "_id": "VIG1L-8-NODE04:1791290282100", "received_at": 1791290282100, "v": 1, "device_id": "VIG1L-8-NODE04", "seq": 14, "temp_c": 25.9, "hum_pct": 60.4, "gas_mv": 262, "...": "..." }
