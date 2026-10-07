@@ -14,6 +14,7 @@ import (
 var (
 	deviceIDPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,64}$`)
 	wordPattern     = regexp.MustCompile(`^[a-z0-9_-]{1,32}$`)
+	alertIDPattern  = regexp.MustCompile(`^alert:[0-9]{13}$`)
 )
 
 // SensorStatus is the "status" object of a telemetry message.

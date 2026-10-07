@@ -2,6 +2,8 @@ package main
 
 import (
 	"encoding/json"
+
+	"github.com/go-chi/chi/v5"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -203,5 +205,25 @@ func TestRateLimiter(t *testing.T) {
 	}
 	if codes[http.StatusTooManyRequests] != 2 {
 		t.Fatalf("expected 2 refused requests, got %v", codes)
+	}
+}
+
+func TestPathParamDecodesEncodedIDs(t *testing.T) {
+	var got string
+	r := chi.NewRouter()
+	r.Post("/api/v1/alerts/{id}/ack", func(w http.ResponseWriter, req *http.Request) { got = pathParam(req, "id") })
+	for _, path := range []string{
+		"/api/v1/alerts/alert:1791290306299/ack",   // curl
+		"/api/v1/alerts/alert%3A1791290306299/ack", // dashboard (encodeURIComponent)
+	} {
+		r.ServeHTTP(httptest.NewRecorder(), httptest.NewRequest(http.MethodPost, path, nil))
+		if got != "alert:1791290306299" || !alertIDPattern.MatchString(got) {
+			t.Errorf("%s: got %q", path, got)
+		}
+	}
+	for _, bad := range []string{"alert:", "alert:123", "alert:1791290306299/../x", "telemetry:1791290306299"} {
+		if alertIDPattern.MatchString(bad) {
+			t.Errorf("%q must be refused", bad)
+		}
 	}
 }
