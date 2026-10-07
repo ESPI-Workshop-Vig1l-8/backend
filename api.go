@@ -70,6 +70,7 @@ func (a *API) Router() http.Handler {
 		r.Get("/api/v1/devices", a.handleDevices)
 		r.Get("/api/v1/devices/{id}/telemetry", a.handleTelemetryHistory)
 		r.Get("/api/v1/devices/{id}/events", a.handleDeviceEvents)
+		r.Get("/api/v1/devices/{id}/export.csv", a.handleExportCSV)
 		r.Get("/api/v1/alerts", a.handleListAlerts)
 		r.Post("/api/v1/alerts", a.handlePostAlert)
 		r.Get("/api/v1/annotations", a.handleListAnnotations)

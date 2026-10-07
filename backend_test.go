@@ -227,3 +227,54 @@ func TestPathParamDecodesEncodedIDs(t *testing.T) {
 		}
 	}
 }
+
+// Same scenario as the IA_Predictions exporter test: warm-up, a DHT22 error,
+// a lost message, a reboot, an annotated test period and short segments.
+func TestTrainingRows(t *testing.T) {
+	var docs []map[string]any
+	seq, up, at := 0, 5000, int64(1_791_280_000_000)
+	for i := 0; i < 400; i++ {
+		if i == 250 { // reboot
+			seq, up = 0, 3000
+		}
+		if i == 200 { // one telemetry message lost
+			seq++
+			up += 2000
+			at += 2000
+		}
+		dht := "ok"
+		var temp, hum any = 25.0, 60.0
+		if i == 150 {
+			dht, temp, hum = "error", nil, nil
+		}
+		warm := i >= 90 && !(i >= 250 && i < 340)
+		docs = append(docs, map[string]any{
+			"received_at": float64(at), "seq": float64(seq), "uptime_ms": float64(up),
+			"temp_c": temp, "hum_pct": hum, "gas_mv": 260.0,
+			"status": map[string]any{"dht": dht, "gas_warm": warm},
+		})
+		seq++
+		up += 2000
+		at += 2000
+	}
+	t0 := int64(1_791_280_000_000)
+	annotations := []period{{t0 + 100*2000, t0 + 129*2000}}
+
+	rows := trainingRows(docs, annotations, false, 60)
+	segments := map[int]int{}
+	for _, r := range rows {
+		segments[r.Segment]++
+	}
+	if len(rows) != 60 || len(segments) != 1 {
+		t.Fatalf("normal export: want 60 rows in 1 segment, got %d rows in %v", len(rows), segments)
+	}
+
+	rows = trainingRows(docs, annotations, true, 60)
+	segments = map[int]int{}
+	for _, r := range rows {
+		segments[r.Segment]++
+	}
+	if len(rows) != 120 || len(segments) != 2 {
+		t.Fatalf("evaluation export: want 120 rows in 2 segments, got %d rows in %v", len(rows), segments)
+	}
+}
