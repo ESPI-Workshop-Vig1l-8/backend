@@ -76,6 +76,7 @@ Request bodies: JSON, 16 KB max, unknown fields refused. Times are epoch millise
 | GET | [`/api/v1/devices`](#get-apiv1devices) | service |
 | GET | [`/api/v1/devices/{id}/telemetry`](#get-apiv1devicesidtelemetry) | service |
 | GET | [`/api/v1/devices/{id}/events`](#get-apiv1devicesidevents) | service |
+| GET | [`/api/v1/devices/{id}/export.csv`](#get-apiv1devicesidexportcsv) | service |
 | POST | [`/api/v1/devices/{id}/command`](#post-apiv1devicesidcommand) | operator |
 | GET | [`/api/v1/alerts`](#get-apiv1alerts) | service |
 | POST | [`/api/v1/alerts`](#post-apiv1alerts) | service |
@@ -183,6 +184,29 @@ Latest stored events of a node, newest first: motion (`type: "motion"`), status 
   {"_id": "VIG1L-8-NODE04:1791290306342", "received_at": 1791290306342, "device_id": "VIG1L-8-NODE04", "type": "command", "strobe": true, "duration_s": 5, "source": "operator"},
   {"_id": "VIG1L-8-NODE04:1791290288010", "received_at": 1791290288010, "v": 1, "device_id": "VIG1L-8-NODE04", "seq": 3, "uptime_ms": 228000, "type": "motion", "state": true}
 ]
+```
+
+### GET /api/v1/devices/{id}/export.csv
+
+Training CSV for the Isolation Forest (`IA_Predictions/entrainement.py`), with the same rules as `IA_Predictions/exporter_couchdb.py`. The dashboard's "Exporter CSV" button calls it.
+
+| Query | Default | |
+|---|---|---|
+| `from` | `to` − 24 h | epoch ms |
+| `to` | now | epoch ms (range: 7 days max) |
+| `annotations` | — | `keep` to keep the annotated test periods (evaluation set) |
+
+- Only "normal" readings are kept: DHT22 errors, MQ-2 warm-up and annotated test periods are dropped.
+- Readings are split into continuous segments (new segment after a lost message, a reboot, a gap over 6 s or a rejected reading); segments shorter than 60 readings (one window) are dropped.
+- Columns: `horodatage,segment,temperature,humidité,gaz` (the names of `generer_données.py`), UTF-8. Save it as `donnees/normal.csv` and run `python entrainement.py`.
+- Headers `X-Export-Readings` / `X-Export-Kept`: readings read / rows kept.
+
+```bash
+curl -H "Authorization: Bearer $TOKEN" -o normal.csv "$B/api/v1/devices/VIG1L-8-NODE04/export.csv"
+```
+```csv
+horodatage,segment,temperature,humidité,gaz
+2026-10-06T12:38:24.582Z,0,25.5,61,264
 ```
 
 ### POST /api/v1/devices/{id}/command
