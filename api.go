@@ -9,6 +9,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"net/url"
 	"sort"
 	"strconv"
 	"strings"
@@ -69,6 +70,7 @@ func (a *API) Router() http.Handler {
 		r.Get("/api/v1/devices", a.handleDevices)
 		r.Get("/api/v1/devices/{id}/telemetry", a.handleTelemetryHistory)
 		r.Get("/api/v1/devices/{id}/events", a.handleDeviceEvents)
+		r.Get("/api/v1/devices/{id}/export.csv", a.handleExportCSV)
 		r.Get("/api/v1/alerts", a.handleListAlerts)
 		r.Post("/api/v1/alerts", a.handlePostAlert)
 		r.Get("/api/v1/annotations", a.handleListAnnotations)
@@ -220,8 +222,18 @@ func queryInt(r *http.Request, key string, def, min, max int64) (int64, error) {
 	return v, nil
 }
 
+// pathParam returns a decoded path parameter: chi gives the raw segment, so
+// an id sent as encodeURIComponent("alert:…") arrives as "alert%3A…".
+func pathParam(r *http.Request, name string) string {
+	raw := chi.URLParam(r, name)
+	if v, err := url.PathUnescape(raw); err == nil {
+		return v
+	}
+	return raw
+}
+
 func deviceParam(w http.ResponseWriter, r *http.Request) (string, bool) {
-	id := chi.URLParam(r, "id")
+	id := pathParam(r, "id")
 	if !deviceIDPattern.MatchString(id) {
 		writeError(w, http.StatusBadRequest, "invalid device id")
 		return "", false
@@ -487,8 +499,8 @@ func (a *API) handlePostAlert(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *API) handleAckAlert(w http.ResponseWriter, r *http.Request) {
-	id := chi.URLParam(r, "id")
-	if !strings.HasPrefix(id, "alert:") || len(id) > 32 {
+	id := pathParam(r, "id")
+	if !alertIDPattern.MatchString(id) {
 		writeError(w, http.StatusBadRequest, "invalid alert id")
 		return
 	}
